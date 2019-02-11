@@ -1,0 +1,6 @@
+[info]
+title=Kvichans lib to use in any plugings
+desc=Utilities for logging, i18n, storing plugin options/states and so on
+type=cudatext-plugin
+subdir=cuda_kv_base
+homepage=https://github.com/kvichans/cuda_kv_base
