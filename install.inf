@@ -4,3 +4,8 @@ desc=Utilities for logging, i18n, storing plugin options/states and so on
 type=cudatext-plugin
 subdir=cuda_kv_base
 homepage=https://github.com/kvichans/cuda_kv_base
+
+[item1]
+section=commands
+caption=Execute current file as plugin
+method=execCurrentFileAsPlugin

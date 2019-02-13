@@ -2,29 +2,28 @@
 Authors:
     Andrey Kvichansky    (kvichans on github.com)
 Version:
-    '0.8.01 2019-02-15'
+    '0.8.01 2019-02-13'
 Content
-    log                 Logger with timing
+    log                 Logger with timing and code location
     _                   i18n
-    (g|s)et_hist        Read|write from|to "*.json" a value by string key or path
+    get_hist,set_hist   Read|write from|to "*.json" a value by string key or path
 ToDo: (see end of file)
 '''
 
-import  sys, os, gettext, logging, inspect, time, collections, json, re, subprocess
+import  sys, os, gettext, logging, inspect, collections, json, re, subprocess
 from    time        import perf_counter
 
-import  cudatext            as app
-from    cudatext        import ed
-import  cudax_lib           as apx
+import  cudatext        as app
+from    cudatext    import ed
+import  cudax_lib       as apx
 
-pass;                           # Logging
-pass;                           from pprint import pformat
-pass;                           import tempfile
+VERSION     = re.split('Version:', __doc__)[1].split("'")[1]
+VERSION_V,  \
+VERSION_D   = VERSION.split(' ')
 
 odict       = collections.OrderedDict
 T,F,N       = True, False, None
 c13,c10,c9  = chr(13),chr(10),chr(9)
-
 def f(s, *args, **kwargs):return s.format(*args, **kwargs)
 
 #########################
@@ -92,7 +91,8 @@ class Tr :
         if '###' in msg :
             # Output stack
             st_inf  = '\n###'
-            for fr in inspect.stack()[1+dpth:]:
+            for fr in inspect.stack()[dpth:]:
+#           for fr in inspect.stack()[1+dpth:]:
                 try:
                     cls = fr[0].f_locals['self'].__class__.__name__ + '.'
                 except:
@@ -231,7 +231,7 @@ def get_desktop_environment():
 
 
 #########################
-#NOTE: cudatext helpers
+#NOTE: CudaText helpers
 #########################
 def ed_of_file_open(op_file):
     if not app.file_open(op_file):
@@ -278,10 +278,10 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
         Parameters
             key_or_path     Key(s) to navigate in json tree
                             Type: str or [str]
-            default         Value to return  if no suitable node in json tree
+            default         Value to return if no suitable node in json tree
             module_name     Start node to navigate.
                             If it is '_auto_detect' then name of caller module is used.
-                            If it is None then it is skipped.
+                            If it is None then it is skipped (see examples).
             to_file         Name of file to read. APP_DIR_SETTING will be joined if no full path.
         
         Return              Found value or default
@@ -293,11 +293,11 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
         2. If "plugin history.json" contains 
                 {"k":1, "plg":{"k":2, "p":{"m":3}, "t":[0,1]}, "q":{"n":4}}
                 get_hist('k', 0, None)          returns 1
-                get_hist('k', 0)                returns 0
+                get_hist('k', 0)                returns 2
                 get_hist('k', 0, 'plg')         returns 2
                 get_hist('k', 0, 'oth')         returns 0
                 get_hist(['p','m'], 0)          returns 3
-                get_hist(['p','t'], [])         returns [0,1]
+                get_hist(['t'], [])             returns [0,1]
                 get_hist('q', 0, None)          returns {'n':4}
                 get_hist(['q','n'], 0, None)    returns 4
     """
@@ -322,12 +322,12 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
     for parent in parents:
         data= data.get(parent)
         if type(data)!=dict:
-            pass;               log('not dict parent={}',(parent))
+            pass;              #log('not dict parent={}',(parent))
             return default
     return data.get(key, default)
    #def get_hist
 
-def set_hist(key_or_path, value, module_name='_auto_detect', kill=False, to_file=PLING_HISTORY_JSON):
+def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to_file=PLING_HISTORY_JSON):
     """ Write to "plugin history.json" one value by key or path (list of keys).
         If any of node doesnot exist it will be added.
         Or remove (if kill) one key+value pair (if suitable key exists).
@@ -346,7 +346,6 @@ def set_hist(key_or_path, value, module_name='_auto_detect', kill=False, to_file
                             value (killed)  if  kill and modification is successful
                             None            if  kill and no path in tree (no changes)
                             KeyError        if !kill and path has problem
-        Return  value
             
         Examples (caller module is 'plg')
         1. If no "plugin history.json"  it will become
@@ -374,6 +373,7 @@ def set_hist(key_or_path, value, module_name='_auto_detect', kill=False, to_file
             set_hist(['p','m'], kill=True)      {"plg":{"k":1, "p":{}}}
             set_hist('n',       kill=True)      {"plg":{"k":1, "p":{"m":2}}}    (nothing to kill)
     """
+    pass;                      #log('key_or_path, value, module_name, kill, to_file={}',(key_or_path, value, module_name, kill, to_file))
     to_file = to_file   if os.sep in to_file else   app.app_path(app.APP_DIR_SETTINGS)+os.sep+to_file
     body    = json.loads(open(to_file).read(), object_pairs_hook=odict) \
                 if os.path.exists(to_file) and os.path.getsize(to_file) != 0 else \
@@ -383,10 +383,12 @@ def set_hist(key_or_path, value, module_name='_auto_detect', kill=False, to_file
         caller_globals  = inspect.stack()[1].frame.f_globals
         module_name = inspect.getmodulename(caller_globals['__file__']) \
                         if '__file__' in caller_globals else None
+    pass;                      #log('to_file,module_name={}',(to_file,module_name))
     keys    = [key_or_path] if type(key_or_path)==str   else key_or_path
     keys    = keys          if module_name is None      else [module_name]+keys
     parents,\
     key     = keys[:-1], keys[-1]
+    pass;                      #log('key,keys={}',(key,keys))
     data    = body
     for parent in parents:
         if kill and parent not in data:
@@ -404,9 +406,22 @@ def set_hist(key_or_path, value, module_name='_auto_detect', kill=False, to_file
     return value
    #def set_hist
 
+class Command:
+    def execCurrentFileAsPlugin(self):
+        fn  = ed.get_filename()
+        if not fn.endswith('.py'):  return
+        ed.save()
+        app.app_log(app.LOG_CONSOLE_CLEAR, 'm')
+        cmd = f('exec(open(r"{}", encoding="UTF-8").read())', fn)
+        ans     = app.app_proc(app.PROC_EXEC_PYTHON, cmd)
+        print('>>> {}'.format(cmd))
+        print(ans)
+       #def execCurrentFileAsPlugin
+   #class Command:
+
 
 ######################################
-#NOTE: misc for pyhthon
+#NOTE: misc for python
 ######################################
 def set_all_for_tree(tree, sub_key, key, val):
     for node in tree:
@@ -450,11 +465,40 @@ def isint(what):    return isinstance(what, int)
 if __name__ == '__main__' :
     # To start the tests run in Console
     #   exec(open(path_to_the_file, encoding="UTF-8").read())
-    print('Start tests')
-    log('a={}',1.23)
-    print('Stop tests')
+
+    app.app_log(app.LOG_CONSOLE_CLEAR, 'm')
+    print('Start all tests')
+    if -1==-1:
+        print('Start tests: log')
+        log('n={}',1.23)
+        log('n,s¬=¶{}',(1.23, 'abc'))
+        def my():
+            log('a={}',1.23)
+            def sub():
+                log('###')
+            class CMy:
+                def meth(self):
+                    log('###')
+            sub()
+            CMy().meth()
+        my()
+        print('Stop tests: log')
+
+    if -2==-2:
+        print('Start tests: plugin history')
+
+        for smk in [smk for smk 
+            in  sys.modules                             if 'cuda_kv_base.tests.test_hist' in smk]:
+            del sys.modules[smk]        # Avoid old module 
+        import                                              cuda_kv_base.tests.test_hist
+        import unittest
+        suite = unittest.TestLoader().loadTestsFromModule(  cuda_kv_base.tests.test_hist)
+        unittest.TextTestRunner().run(suite)
+        
+        print('Stop tests: plugin history')
+    print('Stop all tests')
 '''
 ToDo
 [+][kv-kv][11feb19] Extract from cd_plug_lib.py
-[ ][kv-kv][11feb19] Set tests
+[+][kv-kv][11feb19] Set tests
 '''
