@@ -29,6 +29,17 @@ def f(s, *args, **kwargs):return s.format(*args, **kwargs)
 #########################
 #NOTE: log utility
 #########################
+LOG_FREE    = 0         # No order (=False)
+LOG_ALLOW   = 1         # Allowed one (=True)
+LOG_NEED    = 2         # Required all
+LOG_FORBID  = 3         # Forbidden all
+def iflog(*log_levels):
+    " Get permission to log on multiple orders"
+    if      any([LOG_FORBID  ==l for l in log_levels]): return False  # if at least one is FORBID
+    if      any([LOG_NEED    ==l for l in log_levels]): return True   # if at least one is NEED 
+    return  any([LOG_ALLOW   ==l for l in log_levels])                # if at least one is ALLOW
+   #def iflog
+
 def log(msg='', *args, **kwargs):
     """ Use params args and kwargs to substitute {} in msg.
         Output msg to current/new Tr. 
@@ -412,9 +423,10 @@ class Command:
         if not fn.endswith('.py'):  return
         ed.save()
         app.app_log(app.LOG_CONSOLE_CLEAR, 'm')
-        cmd = f('exec(open(r"{}", encoding="UTF-8").read())', fn)
+        cmd = f(r'exec(open(r"{}", encoding="UTF-8").read().lstrip("\uFEFF"))', fn)
+        pass;                  #log('cmd={!r}',(cmd))
         ans     = app.app_proc(app.PROC_EXEC_PYTHON, cmd)
-        print('>>> {}'.format(cmd))
+        print('>>> run {!r}'.format(fn))
         print(ans)
        #def execCurrentFileAsPlugin
    #class Command:
@@ -459,6 +471,12 @@ def deep_upd(dcts):
     pass;                      #log('rsp={}',(rsp))
     return rsp
    #def deep_upd
+
+def dispose(cllc, key):
+    if key in cllc:
+        del cllc[key]
+    return cllc
+   #def dispose
 
 def isint(what):    return isinstance(what, int)
    
