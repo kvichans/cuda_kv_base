@@ -9,3 +9,4 @@ homepage=https://github.com/kvichans/cuda_kv_base
 section=commands
 caption=Execute current file as plugin
 method=execCurrentFileAsPlugin
+menu=0

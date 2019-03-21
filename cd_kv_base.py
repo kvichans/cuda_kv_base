@@ -21,24 +21,34 @@ VERSION     = re.split('Version:', __doc__)[1].split("'")[1]
 VERSION_V,  \
 VERSION_D   = VERSION.split(' ')
 
+def version():  return VERSION_V
+
 odict       = collections.OrderedDict
 T,F,N       = True, False, None
 c13,c10,c9  = chr(13),chr(10),chr(9)
 def f(s, *args, **kwargs):return s.format(*args, **kwargs)
 
+
 #########################
 #NOTE: log utility
 #########################
-LOG_FREE    = 0         # No order (=False)
-LOG_ALLOW   = 1         # Allowed one (=True)
-LOG_NEED    = 2         # Required all
-LOG_FORBID  = 3         # Forbidden all
-def iflog(*log_levels):
+LOG_FREE    = 0                                                 # No order (=False)
+LOG_ALLOW   = 1                                                 # Allowed one (=True)
+LOG_NEED    = 2                                                 # Required all
+LOG_FORBID  = 3                                                 # Forbidden all
+def logif(*log_levels):
     " Get permission to log on multiple orders"
-    if      any([LOG_FORBID  ==l for l in log_levels]): return False  # if at least one is FORBID
-    if      any([LOG_NEED    ==l for l in log_levels]): return True   # if at least one is NEED 
-    return  any([LOG_ALLOW   ==l for l in log_levels])                # if at least one is ALLOW
-   #def iflog
+    if 2==len(log_levels):
+        l1,l2   = log_levels
+        if      l1==LOG_FORBID  or l2==LOG_FORBID:      return False  # If at least one is FORBID
+        if      l1==LOG_NEED    or l2==LOG_NEED:        return True   # If at least one is NEED 
+        return  l1==LOG_ALLOW   or l2==LOG_ALLOW                      # If at least one is ALLOW
+    if      any([LOG_FORBID  ==l for l in log_levels]): return False  # If at least one is FORBID
+    if      any([LOG_NEED    ==l for l in log_levels]): return True   # If at least one is NEED 
+    return  any([LOG_ALLOW   ==l for l in log_levels])                # If at least one is ALLOW
+   #def logif
+
+pass;                           _log4mod = LOG_FREE             # Order log in the module
 
 def log(msg='', *args, **kwargs):
     """ Use params args and kwargs to substitute {} in msg.
@@ -71,14 +81,14 @@ class Tr :
     to_file=None
     tr=None
 
-    sec_digs        = 2                     # Digits in mantissa of second 
+    sec_digs        = 2                                         # Digits in mantissa of second 
     se_fmt          = ''
     mise_fmt        = ''
     homise_fmt      = ''
     def __init__(self, log_to_file=None):
         log_to_file = log_to_file if log_to_file else Tr.to_file
         # Fields
-        self.tm     = perf_counter()        # Start tick for whole log
+        self.tm     = perf_counter()                            # Start tick for whole log
 
         if log_to_file:
             logging.basicConfig( filename=log_to_file
@@ -103,7 +113,6 @@ class Tr :
             # Output stack
             st_inf  = '\n###'
             for fr in inspect.stack()[dpth:]:
-#           for fr in inspect.stack()[1+dpth:]:
                 try:
                     cls = fr[0].f_locals['self'].__class__.__name__ + '.'
                 except:
@@ -114,7 +123,7 @@ class Tr :
             msg    += st_inf
 
         if '+fun:ln' in ops :
-            frCaller= inspect.stack()[dpth] # 0-format_msg, 1-Tr.log|Tr.TrLiver, 2-log, 3-need func
+            frCaller= inspect.stack()[dpth]                     # 0-format_msg, 1-Tr.log, 2-log, 3-need func
             try:
                 cls = frCaller[0].f_locals['self'].__class__.__name__ + '.'
             except:
@@ -312,6 +321,8 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
                 get_hist('q', 0, None)          returns {'n':4}
                 get_hist(['q','n'], 0, None)    returns 4
     """
+    pass;                       log4fun=0                       # Order log in the function
+    pass;                       log('key,def,mod,to_f={}',(key_or_path,default,module_name,to_file)) if logif(log4fun,_log4mod) else 0
     to_file = to_file   if os.sep in to_file else   app.app_path(app.APP_DIR_SETTINGS)+os.sep+to_file
     if not os.path.exists(to_file):
         pass;                  #log('not exists',())
@@ -384,7 +395,8 @@ def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to
             set_hist(['p','m'], kill=True)      {"plg":{"k":1, "p":{}}}
             set_hist('n',       kill=True)      {"plg":{"k":1, "p":{"m":2}}}    (nothing to kill)
     """
-    pass;                      #log('key_or_path, value, module_name, kill, to_file={}',(key_or_path, value, module_name, kill, to_file))
+    pass;                       log4fun=0                       # Order log in the function
+    pass;                      #log('key,val,mod,kill,to_f={}',(key_or_path, value, module_name, kill, to_file)) if logif(log4fun,_log4mod) else 0
     to_file = to_file   if os.sep in to_file else   app.app_path(app.APP_DIR_SETTINGS)+os.sep+to_file
     body    = json.loads(open(to_file).read(), object_pairs_hook=odict) \
                 if os.path.exists(to_file) and os.path.getsize(to_file) != 0 else \
@@ -420,7 +432,8 @@ def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to
 class Command:
     def execCurrentFileAsPlugin(self):
         fn  = ed.get_filename()
-        if not fn.endswith('.py'):  return
+        if not fn.endswith('.py'):
+            return app.msg_status(_('Fail. Use only for python file.'))
         ed.save()
         app.app_log(app.LOG_CONSOLE_CLEAR, 'm')
         cmd = f(r'exec(open(r"{}", encoding="UTF-8").read().lstrip("\uFEFF"))', fn)
@@ -431,9 +444,34 @@ class Command:
        #def execCurrentFileAsPlugin
    #class Command:
 
+######################################
+#NOTE: misc for CudaText
+######################################
+
+RE_CONST_NAME   = re.compile(r'(\w+)\s*=')
+_const_name_vals= {}                        # {module:{name:val}}
+def get_const_name(val, prefix='', module=app):
+    """ Name of constant from the module starts with the prefix and has the value.
+        If more then one names are found then return is concatination (with ",").
+        Else return 'no_constant_starts_with_'+prefix+'_and_value_'+val.
+    """
+    mod_consts  = _const_name_vals.setdefault(module, {})
+    if not mod_consts:
+        with open(module.__file__) as f:
+            for line in f:
+                mtName = RE_CONST_NAME.match(line)
+                if mtName:
+                    nm  = mtName.group(1)
+                    mod_consts[nm]  = getattr(module, nm)
+    nms = [nm   for nm, vl in mod_consts.items()
+                if  nm.startswith(prefix) and vl==val]
+    return ','.join(nms) \
+                if nms else \
+           'no_constant_starts_with_'+prefix+'_and_value_'+str(val)
+   #def get_app_const_name
 
 ######################################
-#NOTE: misc for python
+#NOTE: misc for Python
 ######################################
 def set_all_for_tree(tree, sub_key, key, val):
     for node in tree:
@@ -441,6 +479,7 @@ def set_all_for_tree(tree, sub_key, key, val):
             set_all_for_tree(node[sub_key], sub_key, key, val)
         else:
             node[key]   = val
+    return tree
    #def set_all_for_tree
 
 def upd_dict(d1, d2):
@@ -472,10 +511,11 @@ def deep_upd(dcts):
     return rsp
    #def deep_upd
 
-def dispose(cllc, key):
-    if key in cllc:
-        del cllc[key]
-    return cllc
+def dispose(dct, key):
+    " Remove the key from the dict (if is) and return the dict. "
+    if key in dct:
+        del dct[key]
+    return dct
    #def dispose
 
 def isint(what):    return isinstance(what, int)
