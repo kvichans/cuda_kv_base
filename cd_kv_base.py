@@ -2,7 +2,7 @@
 Authors:
     Andrey Kvichansky    (kvichans on github.com)
 Version:
-    '0.8.01 2019-02-13'
+    '0.9.01 2019-03-28'
 Content
     log                 Logger with timing and code location
     _                   i18n
@@ -12,6 +12,7 @@ ToDo: (see end of file)
 
 import  sys, os, gettext, logging, inspect, collections, json, re, subprocess
 from    time        import perf_counter
+from    functools   import lru_cache
 
 import  cudatext        as app
 from    cudatext    import ed
@@ -23,10 +24,23 @@ VERSION_D   = VERSION.split(' ')
 
 def version():  return VERSION_V
 
-odict       = collections.OrderedDict
 T,F,N       = True, False, None
 c13,c10,c9  = chr(13),chr(10),chr(9)
-def f(s, *args, **kwargs):return s.format(*args, **kwargs)
+def f(     s, *args, **kwargs): return       s.format(*args, **kwargs)
+def printf(s, *args, **kwargs): return print(s.format(*args, **kwargs))
+
+odict       = collections.OrderedDict
+class odct(collections.OrderedDict):
+    def __init__(self, *args, **kwargs):
+        pass;                  #print('args=',args)
+        if     args: super().__init__( *args) \
+            if 1==len(args) else \
+                     super().__init__(  args)
+        elif kwargs: super().__init__(kwargs.items())
+    def __str__(self):
+        return '{%s}' % (', '.join("'%s': %r" % (k,v) for k,v in self.items()))
+    def __repr__(self):
+        return self.__str__()
 
 
 #########################
@@ -289,6 +303,16 @@ def get_hotkeys_desc(cmd_id, ext_id=None, keys_js=None, def_ans=''):
     return desc
    #def get_hotkeys_desc
 
+@lru_cache(maxsize=32)
+def get_plugcmd_hotkeys(plugcmd):
+    lcmds   = app.app_proc(app.PROC_GET_COMMANDS, '')
+    cfg_keys= [(cmd['key1'], cmd['key2'])
+                for cmd in lcmds 
+                if cmd['type']=='plugin' and cmd['p_method']==plugcmd][0]
+    return cfg_keys
+   #def get_plugcmd_hotkeys
+
+
 ######################################
 #NOTE: plugins history
 ######################################
@@ -473,6 +497,9 @@ def get_const_name(val, prefix='', module=app):
 ######################################
 #NOTE: misc for Python
 ######################################
+def rgb_to_int(r,g,b):
+    return r | (g<<8) | (b<<16)
+
 def set_all_for_tree(tree, sub_key, key, val):
     for node in tree:
         if sub_key in node:
@@ -518,7 +545,9 @@ def dispose(dct, key):
     return dct
    #def dispose
 
-def isint(what):    return isinstance(what, int)
+def likesint(what):     return isinstance(what, int)
+def likesstr(what):     return isinstance(what, str)
+def likeslist(what):    return isinstance(what, tuple) or isinstance(what, list)
    
 if __name__ == '__main__' :
     # To start the tests run in Console
@@ -559,4 +588,5 @@ if __name__ == '__main__' :
 ToDo
 [+][kv-kv][11feb19] Extract from cd_plug_lib.py
 [+][kv-kv][11feb19] Set tests
+[ ][kv-kv][24mar19] Rename upd_dict
 '''
