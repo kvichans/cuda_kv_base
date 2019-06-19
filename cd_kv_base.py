@@ -25,7 +25,7 @@ VERSION_D   = VERSION.split(' ')
 def version():  return VERSION_V
 
 T,F,N       = True, False, None
-c13,c10,c9  = chr(13),chr(10),chr(9)
+C13,C10,C9  = chr(13),chr(10),chr(9)
 def f(     s, *args, **kwargs): return       s.format(*args, **kwargs)
 def printf(s, *args, **kwargs): return print(s.format(*args, **kwargs))
 
@@ -50,7 +50,7 @@ LOG_FREE    = 0                                                 # No order (=Fal
 LOG_ALLOW   = 1                                                 # Allowed one (=True)
 LOG_NEED    = 2                                                 # Required all
 LOG_FORBID  = 3                                                 # Forbidden all
-def logif(*log_levels):
+def iflog(*log_levels):
     " Get permission to log on multiple orders"
     if 2==len(log_levels):
         l1,l2   = log_levels
@@ -60,9 +60,20 @@ def logif(*log_levels):
     if      any([LOG_FORBID  ==l for l in log_levels]): return False  # If at least one is FORBID
     if      any([LOG_NEED    ==l for l in log_levels]): return True   # If at least one is NEED 
     return  any([LOG_ALLOW   ==l for l in log_levels])                # If at least one is ALLOW
-   #def logif
+   #def iflog
 
 pass;                           _log4mod = LOG_FREE             # Order log in the module
+
+
+def log__(msg='', *args, **kwargs):
+    cond4log    = kwargs.pop('__', None) if kwargs else None
+    if not cond4log or not iflog(*cond4log):    return 
+    if args or kwargs:
+        msg = msg.format(*args, **kwargs)
+    if Tr.tr is None:
+        Tr.tr=Tr()
+    return Tr.tr.log(msg, dpth=4)
+
 
 def log(msg='', *args, **kwargs):
     """ Use params args and kwargs to substitute {} in msg.
@@ -117,7 +128,7 @@ class Tr :
                                 ,format='%(message)s'
                                 ,datefmt='%H:%M:%S'
                                 ,style='%')
-    def log(self, msg='') :
+    def log(self, msg='', dpth=3) :
         logging.debug( self.format_msg(msg) )
         return self 
         # Tr.log
@@ -148,7 +159,7 @@ class Tr :
         else : 
             msg     = '[{}] '.format( Tr.format_tm( perf_counter() - self.tm ) ) + msg
 
-        return msg.replace('¬',c9).replace('¶',c10)
+        return msg.replace('¬',C9).replace('¶',C10)
         # Tr.format
 
     @staticmethod
@@ -355,7 +366,7 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
                 get_hist(['q','n'], 0, None)    returns 4
     """
     pass;                       log4fun=0                       # Order log in the function
-    pass;                       log('key,def,mod,to_f={}',(key_or_path,default,module_name,to_file)) if logif(log4fun,_log4mod) else 0
+    pass;                       log('key,def,mod,to_f={}',(key_or_path,default,module_name,to_file)) if iflog(log4fun,_log4mod) else 0
     to_file = to_file   if os.sep in to_file else   app.app_path(app.APP_DIR_SETTINGS)+os.sep+to_file
     if not os.path.exists(to_file):
         pass;                  #log('not exists',())
@@ -429,7 +440,7 @@ def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to
             set_hist('n',       kill=True)      {"plg":{"k":1, "p":{"m":2}}}    (nothing to kill)
     """
     pass;                       log4fun=0                       # Order log in the function
-    pass;                      #log('key,val,mod,kill,to_f={}',(key_or_path, value, module_name, kill, to_file)) if logif(log4fun,_log4mod) else 0
+    pass;                      #log('key,val,mod,kill,to_f={}',(key_or_path, value, module_name, kill, to_file)) if iflog(log4fun,_log4mod) else 0
     to_file = to_file   if os.sep in to_file else   app.app_path(app.APP_DIR_SETTINGS)+os.sep+to_file
     body    = json.loads(open(to_file).read(), object_pairs_hook=odict) \
                 if os.path.exists(to_file) and os.path.getsize(to_file) != 0 else \
