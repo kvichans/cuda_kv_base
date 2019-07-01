@@ -1,6 +1,6 @@
 [info]
 version=0.9.01
-title=Kvichans lib to use in any plugings
+title=Kvichans lib to use in any plugins
 desc=Utilities for logging, i18n, storing plugin options/states and so on
 type=cudatext-plugin
 subdir=cuda_kv_base
