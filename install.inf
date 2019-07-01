@@ -1,5 +1,5 @@
 [info]
-version=0.9.01
+version=1.1.01
 title=Kvichans lib to use in any plugins
 desc=Utilities for logging, i18n, storing plugin options/states and so on
 type=cudatext-plugin
