@@ -2,7 +2,7 @@
 Authors:
     Andrey Kvichansky    (kvichans on github.com)
 Version:
-    '0.9.01 2019-03-28'
+    '0.9.02 2019-07-22'
 Content
     log                 Logger with timing and code location
     _                   i18n
@@ -26,8 +26,8 @@ def version():  return VERSION_V
 
 T,F,N       = True, False, None
 C13,C10,C9  = chr(13),chr(10),chr(9)
-def f(     s, *args, **kwargs): return       s.format(*args, **kwargs)
-def printf(s, *args, **kwargs): return print(s.format(*args, **kwargs))
+def f(     s_, *args, **kwargs): return       s_.format(*args, **kwargs)
+def printf(s_, *args, **kwargs): return print(s_.format(*args, **kwargs))
 
 odict       = collections.OrderedDict
 class odct(collections.OrderedDict):
@@ -37,10 +37,8 @@ class odct(collections.OrderedDict):
             if 1==len(args) else \
                      super().__init__(  args)
         elif kwargs: super().__init__(kwargs.items())
-    def __str__(self):
-        return '{%s}' % (', '.join("'%s': %r" % (k,v) for k,v in self.items()))
     def __repr__(self):
-        return self.__str__()
+        return '{%s}' % (', '.join("'%s': %r" % (k,v) for k,v in self.items()))
 
 class dcta(dict):
     def __getattr__(self, name):
@@ -372,7 +370,7 @@ def add_to_history(val:str, lst:list, max_len=MAX_HIST, unicase=True)->list:
 #NOTE: plugins history
 ######################################
 PLING_HISTORY_JSON  = app.app_path(app.APP_DIR_SETTINGS)+os.sep+'plugin history.json'
-def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLING_HISTORY_JSON):
+def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLING_HISTORY_JSON, **json_kwargs):
     """ Read from "plugin history.json" one value by string key or path (list of keys).
         Parameters
             key_or_path     Key(s) to navigate in json tree
@@ -382,6 +380,7 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
                             If it is '_auto_detect' then name of caller module is used.
                             If it is None then it is skipped (see examples).
             to_file         Name of file to read. APP_DIR_SETTING will be joined if no full path.
+            json_kwargs     Keys for json.loads
         
         Return              Found value or default
             
@@ -408,7 +407,7 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
         return default
     data    = None
     try:
-        data    = json.loads(open(to_file).read())
+        data    = json.loads(open(to_file).read(), **json_kwargs)
     except:
         pass;                   log('not load: {}',sys.exc_info())
         return default
@@ -428,7 +427,7 @@ def get_hist(key_or_path, default=None, module_name='_auto_detect', to_file=PLIN
     return data.get(key, default)
    #def get_hist
 
-def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to_file=PLING_HISTORY_JSON):
+def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to_file=PLING_HISTORY_JSON, **json_kwargs):
     """ Write to "plugin history.json" one value by key or path (list of keys).
         If any of node doesnot exist it will be added.
         Or remove (if kill) one key+value pair (if suitable key exists).
@@ -442,6 +441,7 @@ def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to
             kill            Need to remove node in tree.
                             if kill==True parm value is ignored
             to_file         Name of file to write. APP_DIR_SETTING will be joined if no full path.
+            json_kwargs     Keys for json.loads
         
         Return              value (param)   if !kill and modification is successful
                             value (killed)  if  kill and modification is successful
@@ -477,7 +477,8 @@ def set_hist(key_or_path, value=None, module_name='_auto_detect', kill=False, to
     pass;                       log4fun=0                       # Order log in the function
     pass;                      #log__('key,val,mod,kill,to_f={}',(key_or_path, value, module_name, kill, to_file)      ,__=(log4fun,_log4mod))
     to_file = to_file   if os.sep in to_file else   app.app_path(app.APP_DIR_SETTINGS)+os.sep+to_file
-    body    = json.loads(open(to_file).read(), object_pairs_hook=odict) \
+    json_kwargs = json_kwargs if json_kwargs else dict(object_pairs_hook=odict)
+    body    = json.loads(open(to_file).read(), **json_kwargs) \
                 if os.path.exists(to_file) and os.path.getsize(to_file) != 0 else \
               odict()
 
@@ -527,7 +528,7 @@ class Command:
 #NOTE: misc for CudaText
 ######################################
 
-RE_CONST_NAME   = re.compile(r'(\w+)\s*=')
+#RE_CONST_NAME   = re.compile(r'(\w+)\s*=')
 _const_name_vals= {}                        # {module:{name:val}}
 def get_const_name(val, prefix='', module=app):
     """ Name of constant from the module starts with the prefix and has the value.
@@ -536,12 +537,14 @@ def get_const_name(val, prefix='', module=app):
     """
     mod_consts  = _const_name_vals.setdefault(module, {})
     if not mod_consts:
-        with open(module.__file__) as f:
-            for line in f:
-                mtName = RE_CONST_NAME.match(line)
-                if mtName:
-                    nm  = mtName.group(1)
-                    mod_consts[nm]  = getattr(module, nm)
+        mod_consts  = {cnm:module.__getattribute__(cnm) for cnm in dir(module)
+                        if not callable(module.__getattribute__(cnm))}
+#       with open(module.__file__) as f:
+#           for line in f:
+#               mtName = RE_CONST_NAME.match(line)
+#               if mtName:
+#                   nm  = mtName.group(1)
+#                   mod_consts[nm]  = getattr(module, nm)
     nms = [nm   for nm, vl in mod_consts.items()
                 if  nm.startswith(prefix) and vl==val]
     return ','.join(nms) \
